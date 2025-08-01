@@ -15,7 +15,9 @@ import {
   faHourglassHalf,
   faExclamationCircle,
   faHeartbeat,
-  faHome
+  faHome,
+  faSearch,
+  faTimes,
 } from '@fortawesome/free-solid-svg-icons'
 
 function UploadPage() {
@@ -152,6 +154,14 @@ function UploadPage() {
               <span>P&C</span>
             </label>
           </div>
+          <button
+            type="button"
+            onClick={() => navigate('/jobs')}
+            className="nav-button"
+          >
+            <FontAwesomeIcon icon={faList} style={{ marginRight: '8px' }} />
+            View All Jobs
+          </button>
         </div>
       </div>
 
@@ -341,9 +351,9 @@ function JobPageWrapper() {
 
 // Add this new type definition
 interface Job {
-  job_id: string;
-  filename: string;
-  timestamp: number;
+  jobId: string;
+  originalFilename: string;
+  uploadTimestamp: string;
   status: 'Complete' | 'In Progress' | 'Failed';
 }
 
@@ -353,6 +363,30 @@ function JobsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = () => {
+    setSearchQuery(searchInput.trim());
+  };
+
+  const handleClear = () => {
+    setSearchInput('');
+    setSearchQuery('');
+  };
+
+  const handleKeyDown = (e: any) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  const filteredJobs = searchQuery
+  ? jobs.filter(job =>
+      job.originalFilename.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  : jobs;
+
 
   useEffect(() => {
     fetchJobs();
@@ -373,7 +407,7 @@ function JobsList() {
       }
 
       const data = await response.json();
-      setJobs(data);
+      setJobs(data.jobs);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -381,8 +415,9 @@ function JobsList() {
     }
   };
 
-  const formatDate = (timestamp: number) => {
+  const formatDate = (timestamp: string) => {
     const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return 'Invalid date';
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'short',
@@ -450,22 +485,66 @@ function JobsList() {
             </button>
           </div>
         ) : (
+          <>
+            <div
+              className="search-container"
+              style={{ textAlign: 'center', margin: '20px 0' }}
+            >
+              <input
+                type="text"
+                placeholder="Search by filename"
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                style={{ padding: '8px', width: '300px' }}
+              />
+              <button
+                onClick={handleSearch}
+                style={{
+                  padding: '8px 12px',
+                  marginLeft: '8px',
+                  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                }}
+              >
+                <FontAwesomeIcon icon={faSearch} style={{ marginRight: '5px' }} />
+                Search
+              </button>
+              <button
+                onClick={handleClear}
+                style={{
+                  padding: '8px 12px',
+                  marginLeft: '8px',
+                  background: 'linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%)',
+                  color: '#333',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                }}
+              >
+                <FontAwesomeIcon icon={faTimes} style={{ marginRight: '5px' }} />
+                Clear
+              </button>
+            </div>
           <div className="jobs-list">
-            {jobs.map((job) => (
-              <div 
-                key={job.job_id} 
+            {filteredJobs.map(job => (
+              <div
+                key={job.jobId}
                 className="job-card"
-                onClick={() => navigate(`/jobs/${job.job_id}`)}
+                onClick={() => navigate(`/jobs/${job.jobId}`)}
               >
                 <div className="job-icon">
                   <FontAwesomeIcon icon={faFileAlt} />
                 </div>
                 <div className="job-details">
-                  <h3 className="job-filename">{job.filename}</h3>
+                  <h3 className="job-filename">{job.originalFilename}</h3>
                   <div className="job-meta">
                     <div className="job-date">
                       <FontAwesomeIcon icon={faCalendarAlt} />
-                      {formatDate(job.timestamp)}
+                      {formatDate(job.uploadTimestamp)}
                     </div>
                     <div className={`job-status ${job.status.toLowerCase().replace(' ', '-')}`}>
                       {getStatusIcon(job.status)}
@@ -476,6 +555,7 @@ function JobsList() {
               </div>
             ))}
           </div>
+          </>
         )}
       </div>
     </div>
